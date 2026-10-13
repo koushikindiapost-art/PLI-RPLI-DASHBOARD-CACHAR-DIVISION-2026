@@ -30,7 +30,7 @@ select,input,button{font:inherit;padding:6px 8px;border:1px solid var(--bd);bord
 <div class="card"><h2>Top 10 Sub Offices</h2><div class="sc" style="max-height:260px"><table id="to"></table></div></div></div>
 <div class="card"><h2>Details (first 150 rows of current filter)</h2><div class="sc"><table id="tb"></table></div></div>
 <script>
-const SHEET_CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vRtSBxlvUP7uxEJQPJqCVy6NnIoAI-F8GG--nDLffqir3NXelHI6LWcuHKrYGHxFVUBKSGoQaYFpJvJ/pubhtml';
+const SHEET_CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vRtSBxlvUP7uxEJQPJqCVy6NnIoAI-F8GG--nDLffqir3NXelHI6LWcuHKrYGHxFVUBKSGoQaYFpJvJ/pub?output=csv';
 let D=[];
 const $=i=>document.getElementById(i),F=n=>'₹'+Math.round(n).toLocaleString('en-IN'),E=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const U=k=>[...new Set(D.map(r=>r[k]))].sort();
