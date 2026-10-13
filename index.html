@@ -1,0 +1,78 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>PLI/RPLI Business Dashboard – Cachar Division</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mu:#667085;--bd:#e3e6ea;--a:#c8102e;--b:#1f6feb}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#14161a;--card:#1d2026;--tx:#eceff3;--mu:#98a2b3;--bd:#2d323a;--a:#ff5a73;--b:#5b9dff}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#14161a;--card:#1d2026;--tx:#eceff3;--mu:#98a2b3;--bd:#2d323a;--a:#ff5a73;--b:#5b9dff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,Segoe UI,Roboto,sans-serif;padding:14px;max-width:1100px;margin:auto}
+h1{font-size:19px;margin:0}.sub{color:var(--mu);font-size:12px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:12px}
+.f{display:flex;flex-wrap:wrap;gap:8px;align-items:end}.f label{font-size:11px;color:var(--mu);display:flex;flex-direction:column;gap:2px}
+select,input,button{font:inherit;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--card);color:var(--tx)}button{cursor:pointer;background:var(--b);color:#fff;border:0}
+.k{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.k div{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px}.k b{display:block;font-size:19px}.k span{font-size:11px;color:var(--mu)}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}h2{font-size:13px;margin:0 0 8px}
+.r{display:grid;grid-template-columns:90px 1fr 80px;gap:6px;align-items:center;margin:4px 0;font-size:12px}.bar{height:14px;background:var(--bd);border-radius:3px;display:flex;overflow:hidden}.bar i{display:block;height:100%}
+.t{display:flex;align-items:end;gap:2px;height:130px}.t i{flex:1;background:var(--b);border-radius:2px 2px 0 0;min-width:3px}
+.sc{overflow-x:auto;max-height:340px;overflow-y:auto}table{border-collapse:collapse;width:100%;font-size:12px}th,td{padding:5px 7px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}th{position:sticky;top:0;background:var(--card)}td.n,th.n{text-align:right}
+.lg{font-size:11px;color:var(--mu)}.lg b{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px 0 8px}
+</style></head><body>
+<h1>PLI / RPLI Business Dashboard – Cachar Division</h1>
+<div class="sub">Live from Google Sheet · <span id="rng">loading…</span></div>
+<div class="card f">
+<label>Scheme<select id="fs"></select></label><label>Sub Division<select id="fd"></select></label><label>Frequency<select id="ff"></select></label>
+<label>From<input type="date" id="d1"></label><label>To<input type="date" id="d2"></label>
+<button id="rs" style="background:var(--mu)">Reset</button><button id="dl">Download filtered CSV</button></div>
+<div class="k" id="k" style="margin-bottom:12px"></div>
+<div class="g">
+<div class="card"><h2>Premium by Sub Division <span class="lg"><b style="background:var(--a)"></b>PLI<b style="background:var(--b)"></b>RPLI</span></h2><div id="cd"></div></div>
+<div class="card"><h2>Premium by Frequency</h2><div id="cf"></div></div>
+<div class="card"><h2>Daily premium</h2><div class="t" id="ct"></div><div class="lg" id="tl"></div></div>
+<div class="card"><h2>Top 10 Sub Offices</h2><div class="sc" style="max-height:260px"><table id="to"></table></div></div></div>
+<div class="card"><h2>Details (first 150 rows of current filter)</h2><div class="sc"><table id="tb"></table></div></div>
+<script>
+const SHEET_CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vRtSBxlvUP7uxEJQPJqCVy6NnIoAI-F8GG--nDLffqir3NXelHI6LWcuHKrYGHxFVUBKSGoQaYFpJvJ/pubhtml';
+let D=[];
+const $=i=>document.getElementById(i),F=n=>'₹'+Math.round(n).toLocaleString('en-IN'),E=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const U=k=>[...new Set(D.map(r=>r[k]))].sort();
+const fill=(id,k)=>{$(id).innerHTML='<option value="">All</option>'+U(k).map(v=>`<option>${E(v)}</option>`).join('')};
+let ds=[];
+let cur=[];
+function grp(a,k){const m={};a.forEach(r=>{(m[r[k]]=m[r[k]]||{s:0,a:0,n:0,P:0,R:0});const g=m[r[k]];g.a+=r.a;g.n++;g.s+=r.sa;r.s=='PLI'?g.P+=r.a:g.R+=r.a});return Object.entries(m).sort((x,y)=>y[1].a-x[1].a)}
+function go(){
+cur=D.filter(r=>(!$('fs').value||r.s==$('fs').value)&&(!$('fd').value||r.d==$('fd').value)&&(!$('ff').value||r.f==$('ff').value)&&(!$('d1').value||r.dt>=$('d1').value)&&(!$('d2').value||r.dt<=$('d2').value));
+const t=cur.reduce((x,r)=>x+r.a,0),sa=cur.reduce((x,r)=>x+r.sa,0),p=cur.filter(r=>r.s=='PLI'),q=cur.filter(r=>r.s=='RPLI');
+const kp=[['Total premium',F(t)],['Proposals',cur.length.toLocaleString('en-IN')],['Sum assured',(sa/1e7).toFixed(2)+' Cr'],['PLI premium',F(p.reduce((x,r)=>x+r.a,0))+' ('+p.length+')'],['RPLI premium',F(q.reduce((x,r)=>x+r.a,0))+' ('+q.length+')']];
+$('k').innerHTML=kp.map(x=>`<div><span>${x[0]}</span><b>${x[1]}</b></div>`).join('');
+const gd=grp(cur,'d'),mx=Math.max(1,...gd.map(x=>x[1].a));
+$('cd').innerHTML=gd.map(([k,g])=>`<div class="r"><span>${E(k)}</span><div class="bar" style="width:${g.a/mx*100}%"><i style="width:${g.P/g.a*100}%;background:var(--a)"></i><i style="width:${g.R/g.a*100}%;background:var(--b)"></i></div><span>${F(g.a)}</span></div>`).join('')||'No data';
+const gf=grp(cur,'f'),mf=Math.max(1,...gf.map(x=>x[1].a));
+$('cf').innerHTML=gf.map(([k,g])=>`<div class="r"><span>${E(k)}</span><div class="bar" style="width:${g.a/mf*100}%"><i style="width:100%;background:var(--b)"></i></div><span>${F(g.a)}</span></div>`).join('')||'No data';
+const gt=grp(cur,'dt').sort((x,y)=>x[0]<y[0]?-1:1),mt=Math.max(1,...gt.map(x=>x[1].a));
+$('ct').innerHTML=gt.map(([k,g])=>`<i style="height:${g.a/mt*100}%" title="${k}: ${F(g.a)}"></i>`).join('');
+$('tl').textContent=gt.length?gt[0][0]+' → '+gt[gt.length-1][0]+' · peak '+F(mt):'';
+$('to').innerHTML='<tr><th>Sub Office</th><th>Sub Div</th><th class="n">Proposals</th><th class="n">Premium</th></tr>'+grp(cur,'o').slice(0,10).map(([k,g])=>{const sd=(cur.find(r=>r.o==k)||{}).d;return `<tr><td>${E(k)}</td><td>${E(sd)}</td><td class="n">${g.n}</td><td class="n">${F(g.a)}</td></tr>`}).join('');
+$('tb').innerHTML='<tr><th>Date</th><th>Scheme</th><th>Sub Div</th><th>Sub Office</th><th>HO</th><th>Frequency</th><th class="n">Sum Assured</th><th class="n">Premium</th></tr>'+cur.slice().sort((x,y)=>x.dt<y.dt?1:-1).slice(0,150).map(r=>`<tr><td>${r.dt}</td><td>${r.s}</td><td>${E(r.d)}</td><td>${E(r.o)}</td><td>${E(r.h)}</td><td>${E(r.f)}</td><td class="n">${r.sa.toLocaleString('en-IN')}</td><td class="n">${r.a.toLocaleString('en-IN')}</td></tr>`).join('');
+}
+['fs','fd','ff','d1','d2'].forEach(i=>$(i).onchange=go);
+$('rs').onclick=()=>{['fs','fd','ff'].forEach(i=>$(i).value='');$('d1').value=ds[0];$('d2').value=ds[ds.length-1];go()};
+$('dl').onclick=()=>{const c='Date,Scheme,Sub Division,Sub Office,HO,Frequency,Sum Assured,Premium\n'+cur.map(r=>[r.dt,r.s,r.d,r.o,r.h,r.f,r.sa,r.a].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+const l=document.createElement('a');l.href=URL.createObjectURL(new Blob([c],{type:'text/csv'}));l.download='cachar_pli_rpli_filtered.csv';l.click()};
+const p=n=>String(n).padStart(2,'0'),MO={JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12};
+function nd(s){s=String(s).trim();let m;if(m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))return m[1]+'-'+p(m[2])+'-'+p(m[3]);
+if(m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/))return m[3]+'-'+p(m[2])+'-'+p(m[1]);
+if(m=s.match(/^(\d{1,2})[\/-]([A-Za-z]{3})[a-z]*[\/-](\d{2,4})/)){const y=m[3].length==2?'20'+m[3]:m[3];return y+'-'+p(MO[m[2].toUpperCase()]||1)+'-'+p(m[1])}return ''}
+function csv(t){const R=[];let r=[],c='',q=false;for(let i=0;i<t.length;i++){const h=t[i];if(q){if(h=='"'){if(t[i+1]=='"'){c+='"';i++}else q=false}else c+=h}else if(h=='"')q=true;else if(h==','){r.push(c);c=''}else if(h=='\n'||h=='\r'){if(h=='\r'&&t[i+1]=='\n')i++;r.push(c);R.push(r);r=[];c=''}else c+=h}if(c||r.length){r.push(c);R.push(r)}return R}
+const num=v=>parseFloat(String(v).replace(/[^\d.-]/g,''))||0;
+let first=true;
+async function load(){
+if(SHEET_CSV_URL.startsWith('PASTE')){$('rng').textContent='Paste your published Google Sheet CSV link in SHEET_CSV_URL (see instructions).';return}
+try{const t=await(await fetch(SHEET_CSV_URL+(SHEET_CSV_URL.includes('?')?'&':'?')+'t='+Date.now())).text();
+const R=csv(t),H=R[0].map(x=>x.trim().toUpperCase()),ix=n=>H.findIndex(x=>x.includes(n));
+const c={s:ix('CARRIER'),h:ix('HO_NAME'),o:ix('SO_NAME'),dt:ix('DATE'),sa:ix('SUM_ASSD'),f:ix('FREQ'),a:ix('AMOUNT'),d:ix('SUB DIV')};
+D=R.slice(1).filter(r=>r[c.s]&&r[c.s].trim()).map(r=>({s:r[c.s].trim().replace(/^RPL$/,'RPLI'),d:(r[c.d]||'').trim()||'Unmapped',o:(r[c.o]||'').trim(),h:(r[c.h]||'').trim(),dt:nd(r[c.dt]||''),sa:num(r[c.sa]),f:(r[c.f]||'').trim()||'Not specified',a:num(r[c.a])}));
+ds=D.map(r=>r.dt).filter(Boolean).sort();
+if(first){fill('fs','s');fill('fd','d');fill('ff','f');$('d1').value=ds[0];$('d2').value=ds[ds.length-1];first=false}
+$('rng').textContent='data '+ds[0]+' to '+ds[ds.length-1]+' · '+D.length+' rows · updated '+new Date().toLocaleTimeString();
+go()}catch(e){$('rng').textContent='Could not load data. Check the link and that the sheet is published to the web.'}}
+load();setInterval(load,300000);
+</script></body></html>
