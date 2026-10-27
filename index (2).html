@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PLI / RPLI Performance Dashboard | Cachar Division</title>
+<style>
+:root{--navy:#102d50;--blue:#1769aa;--red:#c62828;--green:#16805d;--orange:#d97706;--bg:#f3f6fb;--line:#dce4ef;--ink:#172334;--muted:#617187;--pli:#1769aa;--rpli:#16805d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Arial,Helvetica,sans-serif}
+header{background:linear-gradient(120deg,#102d50,#1769aa);color:white;padding:22px max(16px,calc((100vw - 1500px)/2))}
+h1{margin:0;font-size:clamp(22px,3vw,32px)}header p{margin:5px 0 0;opacity:.9}
+main{max-width:1540px;margin:auto;padding:18px}.ticker{overflow:hidden;background:#b71c1c;color:#fff;border-radius:8px;padding:10px 0;margin-bottom:16px;font-weight:700;white-space:nowrap}
+.ticker span{display:inline-block;padding-left:100%;animation:scroll 24s linear infinite}@keyframes scroll{to{transform:translateX(-100%)}}
+.toolbar,.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+button,select,input{font:inherit}button{border:0;border-radius:8px;background:var(--blue);color:#fff;padding:9px 13px;font-weight:700;cursor:pointer}button.alt{background:white;border:1px solid var(--line);color:var(--navy)}button:disabled{opacity:.6}
+select,input{background:#fff;border:1px solid var(--line);border-radius:8px;padding:9px 11px;min-width:150px}.filters label{display:flex;flex-direction:column;gap:4px;color:var(--muted);font-size:12px;font-weight:700}.filters select,.filters input{color:var(--ink);min-width:175px}
+.status{font-size:12px;color:var(--muted)}.status.error{color:var(--red);font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0}.card,.panel{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 2px 7px #102d5008}.card{padding:15px;min-width:0}.card .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}.card .v{font-size:clamp(20px,2.3vw,29px);font-weight:800;margin-top:6px;overflow-wrap:anywhere}.card .sub{font-size:12px;color:var(--muted);margin-top:4px}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}.section-head h2{margin:0;font-size:18px;color:var(--navy)}.panel{padding:16px;margin:14px 0}.panel-actions{display:flex;gap:7px;flex-wrap:wrap}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.table-wrap{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:8px}table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}th,td{padding:9px 10px;border-bottom:1px solid #e8edf4;text-align:left}th{position:sticky;top:0;background:#eaf1fa;color:var(--navy);z-index:1;cursor:pointer}tbody tr:nth-child(even){background:#fafcff}tbody tr:hover{background:#eef6ff}.empty{padding:24px;text-align:center;color:var(--muted)}.pill{display:inline-block;border-radius:99px;padding:3px 8px;background:#eaf1fa;color:var(--navy);font-size:11px;font-weight:700}.good{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}.chartbox{width:100%;overflow:hidden}.chartbox canvas{display:block;width:100%;height:280px}.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:8px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.note{font-size:12px;color:var(--muted)}footer{text-align:center;color:var(--muted);font-size:12px;padding:12px 16px 28px}
+@media(max-width:1050px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.three{grid-template-columns:1fr 1fr}}
+@media(max-width:680px){main{padding:10px}.grid,.two,.three{grid-template-columns:1fr}.panel{padding:12px}.filters label,.filters select,.filters input{width:100%}.filters label{min-width:100%}.chartbox canvas{height:240px}}
+@media print{body{background:white}.toolbar,.filters,.no-print,button{display:none!important}main{max-width:none;padding:0}.panel,.card{box-shadow:none;break-inside:avoid}.table-wrap{max-height:none;overflow:visible}th{position:static}.ticker{white-space:normal}.ticker span{padding:0;animation:none}header{background:#fff;color:#111;padding:10px 0}.grid{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+<header><h1>PLI / RPLI Performance Dashboard</h1><p>Cachar Division · Office-wise business monitoring and indexing performance</p></header>
+<main>
+  <div class="ticker" aria-label="Data update notice"><span id="tickerText">Data is updated only for the Previous Working Day</span></div>
+  <div class="toolbar no-print">
+    <button id="refreshBtn">Refresh data</button>
+    <button class="alt" onclick="printSection('overview')">Download / Print Overview PDF</button>
+    <span id="status" class="status" role="status">Connecting to data source…</span>
+  </div>
+  <section class="filters no-print" aria-label="Dashboard filters">
+    <label>Sub Division<select id="subDivFilter"><option value="">All Sub Divisions</option></select></label>
+    <label>Head Office<select id="hoFilter"><option value="">All Head Offices</option></select></label>
+    <label>Sub Office<select id="soFilter"><option value="">All Sub Offices</option></select></label>
+    <label>Branch Office<select id="boFilter"><option value="">All Branch Offices</option></select></label>
+    <label>Search office / data<input id="searchFilter" type="search" placeholder="Type office name or value"></label>
+    <button class="alt" id="resetBtn">Reset filters</button>
+  </section>
+
+  <section id="overview">
+    <div class="grid">
+      <div class="card"><div class="k">PLI Premium</div><div class="v" id="pliPremium">₹0</div><div class="sub">Filtered data</div></div>
+      <div class="card"><div class="k">RPLI Premium</div><div class="v" id="rpliPremium">₹0</div><div class="sub">Filtered data</div></div>
+      <div class="card"><div class="k">Total Premium</div><div class="v" id="totalPremium">₹0</div><div class="sub">PLI + RPLI</div></div>
+      <div class="card"><div class="k">Policies / Indexings</div><div class="v" id="policyCount">0</div><div class="sub">Count columns detected in source</div></div>
+      <div class="card"><div class="k">Offices in view</div><div class="v" id="officeCount">0</div><div class="sub">Unique office names</div></div>
+      <div class="card"><div class="k">BO target achievement</div><div class="v" id="targetAchievement">—</div><div class="sub" id="targetSub">₹24,000 monthly target per BO</div></div>
+      <div class="card"><div class="k">BOs meeting target</div><div class="v" id="targetMet">0</div><div class="sub">Based on premium paid</div></div>
+      <div class="card"><div class="k">Zero-indexing BOs</div><div class="v" id="zeroBOs">0</div><div class="sub">No premium in filtered period</div></div>
+    </div>
+  </section>
+
+  <section class="panel" id="dailyTrend">
+    <div class="section-head"><h2>Current-month day-wise premium trend</h2><div class="panel-actions no-print"><button class="alt" onclick="printSection('dailyTrend')">PDF / Print this section</button></div></div>
+    <div class="chartbox"><canvas id="trendChart" width="1200" height="300" aria-label="Daily PLI and RPLI premium trend"></canvas></div>
+    <div class="legend"><span><i class="dot" style="background:var(--pli)"></i>PLI</span><span><i class="dot" style="background:var(--rpli)"></i>RPLI</span></div>
+    <p class="note">Every calendar day in the current month is shown, including days with zero recorded premium. The chart uses the date column found in the source sheet.</p>
+  </section>
+
+  <section class="two">
+    <div class="panel" id="subDivisionPerformance"><div class="section-head"><h2>Sub Division performance</h2><div class="panel-actions no-print"><button class="alt" onclick="printSection('subDivisionPerformance')">PDF</button></div></div><div id="subDivTable" class="table-wrap"><div class="empty">Waiting for data…</div></div></div>
+    <div class="panel" id="topOffices"><div class="section-head"><h2>Top 10 performing Offices</h2><div class="panel-actions no-print"><button class="alt" onclick="printSection('topOffices')">PDF</button></div></div><div id="topOfficeTable" class="table-wrap"><div class="empty">Waiting for data…</div></div></div>
+  </section>
+
+  <section class="two">
+    <div class="panel" id="pliRankings"><div class="section-head"><h2>PLI BO rankings by premium</h2><div class="panel-actions no-print"><button class="alt" onclick="printSection('pliRankings')">PDF</button></div></div><div id="pliRankTable" class="table-wrap"><div class="empty">Waiting for data…</div></div></div>
+    <div class="panel" id="rpliRankings"><div class="section-head"><h2>RPLI BO rankings by premium</h2><div class="panel-actions no-print"><button class="alt" onclick="printSection('rpliRankings')">PDF</button></div></div><div id="rpliRankTable" class="table-wrap"><div class="empty">Waiting for data…</div></div></div>
+  </section>
+
+  <section class="panel" id="boPerformance">
+    <div class="section-head"><h2>BO-wise performance and target shortfall</h2><div class="panel-actions no-print"><button class="alt" onclick="printSection('boPerformance')">PDF / Print this section</button><button id="downloadCsvBtn" class="alt">Download table CSV</button></div></div>
+    <div id="boTable" class="table-wrap"><div class="empty">Waiting for data…</div></div>
+    <p class="note">Monthly target is set at ₹24,000 per BO as specified for the earlier Silchar West Sub-Division dashboard. Target achievement is calculated using the available premium paid amount fields.</p>
+  </section>
+
+  <section class="panel" id="dataComments">
+    <div class="section-head"><h2>Performance observations</h2><div class="panel-actions no-print"><button class="alt" onclick="printSection('dataComments')">PDF / Print this section</button></div></div>
+    <div id="comments"><div class="empty">Observations will appear after the data loads.</div></div>
+  </section>
+  <p class="note">Data source is configured inside this file. No CSV URL or upload control is shown on the dashboard. Office hierarchy fallback: blank Sub Office uses Head Office; blank Branch Office uses Sub Office, and if both are blank, uses Head Office. Publish only data approved for public access.</p>
+</main>
+<footer>PLI / RPLI Performance Dashboard · Cachar Division</footer>
+
+<script>
+"use strict";
+// Published Google Sheets CSV source supplied by the user.
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRtSBxlvUP7uxEJQPJqCVy6NnIoAI-F8GG--nDLffqir3NXelHI6LWcuHKrYGHxFVUBKSGoQaYFpJvJ/pub?output=csv";
+const BO_MONTHLY_TARGET = 24000;
+let headers=[], sourceRows=[], normalizedRows=[], filteredRows=[];
+const $ = id => document.getElementById(id);
+const aliases = {
+  subDiv:["SUB_DIVISION","SUB DIVISION","SUB-DIVISION","SUBDIVISION","DIVISION NAME"],
+  ho:["HO","HO_NAME","HEAD OFFICE","HEAD_OFFICE","HO NAME","HEAD OFFICE NAME"],
+  so:["SO","SO_NAME","SUB OFFICE","SUB_OFFICE","SO NAME","SUB OFFICE NAME"],
+  bo:["BO","BO_NAME","BRANCH OFFICE","BRANCH_OFFICE","BO NAME","BRANCH OFFICE NAME","OFFICE NAME"],
+  product:["PRODUCT","PRODUCT_TYPE","PRODUCT TYPE","INSURANCE TYPE","POLICY TYPE","BUSINESS TYPE","PLI RPLI","SCHEME"],
+  date:["DATE","BUSINESS_DATE","INDEXING_DATE","TRANSACTION_DATE","ENTRY_DATE","REPORT_DATE","WORKING DATE"],
+  pliAmt:["PLI_AMOUNT","PLI AMOUNT","PLI_PREMIUM","PLI PREMIUM","PLI PREMIUM PAID","PLI AMOUNT PAID","PLI_PAID","PLI"],
+  rpliAmt:["RPLI_AMOUNT","RPLI AMOUNT","RPLI_PREMIUM","RPLI PREMIUM","RPLI PREMIUM PAID","RPLI AMOUNT PAID","RPLI_PAID","RPLI"],
+  totalAmt:["AMOUNT_PAID","AMOUNT PAID","TOTAL_AMOUNT","TOTAL AMOUNT","PREMIUM PAID","TOTAL PREMIUM","TOTAL PREMIUM PAID","AMOUNT"],
+  pliCount:["PLI_COUNT","PLI COUNT","PLI_POLICIES","PLI POLICIES","PLI POLICY COUNT","PLI NO","PLI COUNT / POLICIES"],
+  rpliCount:["RPLI_COUNT","RPLI COUNT","RPLI_POLICIES","RPLI POLICIES","RPLI POLICY COUNT","RPLI NO","RPLI COUNT / POLICIES"],
+  totalCount:["POLICY_COUNT","POLICY COUNT","POLICIES","POLICY NO","NEW BUSINESS COUNT","INDEXING COUNT","TOTAL COUNT"]
+};
+function norm(s){return String(s??"").toUpperCase().replace(/[^A-Z0-9]+/g," ").trim().replace(/\s+/g," ")}
+function findCol(names){const normalized=headers.map(norm);for(const name of names){const i=normalized.indexOf(norm(name));if(i>=0)return i}return -1}
+function field(row,key){const i=findCol(aliases[key]||[]);return i<0?"":row[i]??""}
+function firstField(row,keys){for(const k of keys){const v=field(row,k);if(String(v).trim()!=="")return v}return ""}
+function parseCSV(text){const out=[];let row=[],cell="",q=false;for(let i=0;i<text.length;i++){const c=text[i];if(q){if(c==='"'&&text[i+1]==='"'){cell+='"';i++}else if(c==='"')q=false;else cell+=c}else if(c==='"')q=true;else if(c===","){row.push(cell);cell=""}else if(c==="\n"){row.push(cell.replace(/\r$/,""));if(row.some(x=>x.trim()))out.push(row);row=[];cell=""}else cell+=c}if(cell.length||row.length){row.push(cell.replace(/\r$/,""));if(row.some(x=>x.trim()))out.push(row)}return out}
+function num(v){if(v===null||v===undefined)return 0;let s=String(v).trim();if(!s||s==="-"||s==="—")return 0;s=s.replace(/[₹,\s]/g,"").replace(/%$/,"");const n=Number(s);return Number.isFinite(n)?n:0}
+function money(n){return "₹"+Math.round(n||0).toLocaleString("en-IN")}
+function fmt(n){return (n||0).toLocaleString("en-IN",{maximumFractionDigits:2})}
+function safe(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function dateParse(v){if(!v)return null;const s=String(v).trim();let m=s.match(/^(\d{1,2})[-\/ ]([A-Za-z]{3,9})[-\/ ](\d{4})$/);if(m){const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};const mo=months[m[2].slice(0,3).toLowerCase()];if(mo!==undefined)return new Date(+m[3],mo,+m[1])}m=s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);if(m)return new Date(+m[1],+m[2]-1,+m[3]);const d=new Date(s);return Number.isNaN(d.getTime())?null:new Date(d.getFullYear(),d.getMonth(),d.getDate())}
+function dateKey(d){return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`:""}
+function dateLabel(d){return d?d.toLocaleDateString("en-IN",{day:"2-digit",month:"long",year:"numeric"}):""}
+function mapRows(){normalizedRows=sourceRows.map((raw,index)=>{const ho=String(field(raw,"ho")||"").trim();let so=String(field(raw,"so")||"").trim();const rawBO=String(field(raw,"bo")||"").trim();let bo=rawBO;if(!so)so=ho;if(!bo)bo=so||ho;const p=field(raw,"pliAmt"),r=field(raw,"rpliAmt"),tot=field(raw,"totalAmt");let pli=num(p),rpli=num(r);const hasP=findCol(aliases.pliAmt)>=0,hasR=findCol(aliases.rpliAmt)>=0,hasTotal=findCol(aliases.totalAmt)>=0;const product=norm(field(raw,"product"));if(!hasP&&!hasR&&hasTotal){if(product.includes("PLI")&&!product.includes("RPLI"))pli=num(tot);else if(product.includes("RPLI"))rpli=num(tot)}const total=(hasP||hasR)?pli+rpli:num(tot);const d=dateParse(field(raw,"date"));return{raw,index,subDiv:String(field(raw,"subDiv")||"Not specified").trim(),ho:ho||"Not specified",so:so||"Not specified",bo:bo||"Not specified",rawBO,actualBO:!!rawBO,office:bo||so||ho||"Not specified",date:d,pli,rpli,total,pliCount:num(field(raw,"pliCount")),rpliCount:num(field(raw,"rpliCount")),count:num(field(raw,"totalCount"))}})}
+function uniq(values){return [...new Set(values.filter(v=>v&&v!=="Not specified"))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))}
+function setOptions(id,values,label){const el=$(id),old=el.value;el.innerHTML=`<option value="">${label}</option>`+values.map(v=>`<option value="${safe(v)}">${safe(v)}</option>`).join("");if(values.includes(old))el.value=old}
+function fillFilters(){setOptions("subDivFilter",uniq(normalizedRows.map(r=>r.subDiv)),"All Sub Divisions");setOptions("hoFilter",uniq(normalizedRows.map(r=>r.ho)),"All Head Offices");updateDependentFilters()}
+function updateDependentFilters(){const sd=$("subDivFilter").value,ho=$("hoFilter").value;let rows=normalizedRows.filter(r=>(!sd||r.subDiv===sd)&&(!ho||r.ho===ho));setOptions("soFilter",uniq(rows.map(r=>r.so)),"All Sub Offices");const so=$("soFilter").value;rows=rows.filter(r=>!so||r.so===so);setOptions("boFilter",uniq(rows.map(r=>r.bo)),"All Branch Offices")}
+function applyFilters(){const sd=$("subDivFilter").value,ho=$("hoFilter").value,so=$("soFilter").value,bo=$("boFilter").value,q=$("searchFilter").value.trim().toLowerCase();filteredRows=normalizedRows.filter(r=>{if(sd&&r.subDiv!==sd)return false;if(ho&&r.ho!==ho)return false;if(so&&r.so!==so)return false;if(bo&&r.bo!==bo)return false;if(q&&!([...r.raw,r.subDiv,r.ho,r.so,r.bo].join(" ").toLowerCase().includes(q)))return false;return true});renderAll()}
+function aggregate(rows,key){const m=new Map();rows.forEach(r=>{const name=r[key]||"Not specified";if(!m.has(name))m.set(name,{name,pli:0,rpli:0,total:0,pliCount:0,rpliCount:0,count:0,rows:0});const a=m.get(name);a.pli+=r.pli;a.rpli+=r.rpli;a.total+=r.total;a.pliCount+=r.pliCount;a.rpliCount+=r.rpliCount;a.count+=r.count||r.pliCount+r.rpliCount;a.rows++});return [...m.values()]}
+function sum(rows,k){return rows.reduce((s,r)=>s+r[k],0)}
+function table(headersList,rows){if(!rows.length)return '<div class="empty">No matching data found.</div>';return `<table><thead><tr>${headersList.map(h=>`<th>${safe(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(v=>`<td>${v??""}</td>`).join("")}</tr>`).join("")}</tbody></table>`}
+function renderKPIs(){const pli=sum(filteredRows,"pli"),rpli=sum(filteredRows,"rpli"),total=sum(filteredRows,"total");$("pliPremium").textContent=money(pli);$("rpliPremium").textContent=money(rpli);$("totalPremium").textContent=money(total);const counts=sum(filteredRows,"count")||sum(filteredRows,"pliCount")+sum(filteredRows,"rpliCount");$("policyCount").textContent=fmt(counts);const actualBORows=filteredRows.filter(r=>r.actualBO);const bos=aggregate(actualBORows,"bo").filter(a=>a.name!=="Not specified");$("officeCount").textContent=fmt(bos.length);const met=bos.filter(a=>a.total>=BO_MONTHLY_TARGET).length;const eligible=bos.length;$("targetAchievement").textContent=eligible?`${(sum(bos,"total")/(eligible*BO_MONTHLY_TARGET)*100).toFixed(1)}%`:"—";$("targetSub").textContent=`${money(BO_MONTHLY_TARGET)} target per BO · ${money(eligible*BO_MONTHLY_TARGET)} total target`; $("targetMet").textContent=`${met} / ${eligible}`;$("zeroBOs").textContent=fmt(bos.filter(a=>a.total===0).length)}
+function renderSubDivisions(){const arr=aggregate(filteredRows,"subDiv").sort((a,b)=>b.total-a.total);$("subDivTable").innerHTML=table(["Sub Division","PLI Premium","RPLI Premium","Total Premium","PLI Count","RPLI Count"],arr.map(a=>[safe(a.name),money(a.pli),money(a.rpli),`<b>${money(a.total)}</b>`,fmt(a.pliCount),fmt(a.rpliCount)]))}
+function renderTopOffices(){const arr=aggregate(filteredRows,"office").filter(a=>a.name!=="Not specified").sort((a,b)=>b.total-a.total).slice(0,10);$("topOfficeTable").innerHTML=table(["Rank","Office","PLI","RPLI","Total Premium"],arr.map((a,i)=>[i+1,safe(a.name),money(a.pli),money(a.rpli),`<b>${money(a.total)}</b>`]))}
+function renderRankings(){const bos=aggregate(filteredRows.filter(r=>r.actualBO),"bo").filter(a=>a.name!=="Not specified");const p=[...bos].sort((a,b)=>b.pli-a.pli).slice(0,10);const r=[...bos].sort((a,b)=>b.rpli-a.rpli).slice(0,10);$("pliRankTable").innerHTML=table(["Rank","Branch Office","PLI Premium","PLI Count"],p.map((a,i)=>[i+1,safe(a.name),money(a.pli),fmt(a.pliCount)]));$("rpliRankTable").innerHTML=table(["Rank","Branch Office","RPLI Premium","RPLI Count"],r.map((a,i)=>[i+1,safe(a.name),money(a.rpli),fmt(a.rpliCount)]))}
+function renderBO(){const arr=aggregate(filteredRows.filter(r=>r.actualBO),"bo").filter(a=>a.name!=="Not specified").sort((a,b)=>b.total-a.total);$("boTable").innerHTML=table(["Rank","Branch Office","PLI Premium","RPLI Premium","Total Premium","PLI Count","RPLI Count","Target","Shortfall","Achievement"],arr.map((a,i)=>{const short=Math.max(0,BO_MONTHLY_TARGET-a.total),pct=a.total/BO_MONTHLY_TARGET*100;return[i+1,safe(a.name),money(a.pli),money(a.rpli),`<b>${money(a.total)}</b>`,fmt(a.pliCount),fmt(a.rpliCount),money(BO_MONTHLY_TARGET),short?`<span class="bad">${money(short)}</span>`:`<span class="good">₹0</span>`,`<span class="${pct>=100?"good":"bad"}">${pct.toFixed(1)}%</span>`]}))}
+function renderComments(){const bos=aggregate(filteredRows.filter(r=>r.actualBO),"bo").filter(a=>a.name!=="Not specified");if(!bos.length){$("comments").innerHTML='<div class="empty">No branch-office rows available in the selected filter.</div>';return}const total=sum(bos,"total"),zero=bos.filter(a=>a.total===0),below=bos.filter(a=>a.total>0&&a.total<BO_MONTHLY_TARGET),met=bos.filter(a=>a.total>=BO_MONTHLY_TARGET),best=[...bos].sort((a,b)=>b.total-a.total)[0];let items=[`Total premium in the selected view is <b>${money(total)}</b> across <b>${bos.length}</b> branch-office names.`];if(best)items.push(`Highest premium office is <b>${safe(best.name)}</b> with <b>${money(best.total)}</b>.`);items.push(`<b>${zero.length}</b> BO(s) have zero recorded premium; these offices need immediate follow-up for indexing.`);items.push(`<b>${below.length}</b> BO(s) have recorded premium but remain below the ${money(BO_MONTHLY_TARGET)} monthly target.`);items.push(`<b>${met.length}</b> BO(s) have met or exceeded the target.`);$("comments").innerHTML='<ul>'+items.map(x=>`<li style="margin:7px 0">${x}</li>`).join("")+'</ul>'}
+function renderAll(){renderKPIs();renderSubDivisions();renderTopOffices();renderRankings();renderBO();renderComments();drawTrend()}
+function drawTrend(){const canvas=$("trendChart"),ctx=canvas.getContext("2d"),rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;canvas.width=Math.max(320,Math.floor(rect.width*dpr));canvas.height=280*dpr;ctx.scale(dpr,dpr);const w=canvas.width/dpr,h=280;ctx.clearRect(0,0,w,h);const now=new Date(),year=now.getFullYear(),month=now.getMonth(),days=new Date(year,month+1,0).getDate();const values=Array.from({length:days},()=>({pli:0,rpli:0}));filteredRows.forEach(r=>{if(r.date&&r.date.getFullYear()===year&&r.date.getMonth()===month){const i=r.date.getDate()-1;values[i].pli+=r.pli;values[i].rpli+=r.rpli}});const pad={l:54,r:15,t:18,b:35},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;const max=Math.max(1,...values.map(v=>Math.max(v.pli,v.rpli)));ctx.font="11px Arial";ctx.strokeStyle="#e3eaf3";ctx.fillStyle="#617187";ctx.lineWidth=1;for(let i=0;i<=4;i++){const y=pad.t+ch*i/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();ctx.fillText(fmt(max*(1-i/4)),4,y+4)}const step=cw/days;const bw=Math.max(2,step*.32);values.forEach((v,i)=>{const x=pad.l+i*step+step/2;const hp=v.pli/max*ch,hr=v.rpli/max*ch;ctx.fillStyle="#1769aa";ctx.fillRect(x-bw-1,pad.t+ch-hp,bw,hp);ctx.fillStyle="#16805d";ctx.fillRect(x+1,pad.t+ch-hr,bw,hr);if(days<=31&&(i===0||i===days-1||(i+1)%5===0)){ctx.fillStyle="#617187";ctx.fillText(String(i+1),x-4,h-10)}});}
+function printSection(id){const node=$(id);if(!node)return;const w=window.open("","_blank");if(!w){window.print();return}const styles=[...document.querySelectorAll("style")].map(s=>s.innerHTML).join("\n");w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safe(node.querySelector("h2")?.textContent||"PLI RPLI Dashboard")}</title><style>${styles}body{background:#fff;padding:18px}.panel{border:0;box-shadow:none}.no-print,button{display:none!important}.table-wrap{max-height:none;overflow:visible}th{position:static}</style></head><body>${node.outerHTML}</body></html>`);w.document.close();w.focus();setTimeout(()=>{w.print();w.close()},400)}
+function downloadCSV(){const arr=aggregate(filteredRows.filter(r=>r.actualBO),"bo").filter(a=>a.name!=="Not specified").sort((a,b)=>b.total-a.total);const data=[["Rank","Branch Office","PLI Premium","RPLI Premium","Total Premium","PLI Count","RPLI Count","Target","Shortfall","Achievement %"],...arr.map((a,i)=>[i+1,a.name,a.pli,a.rpli,a.total,a.pliCount,a.rpliCount,BO_MONTHLY_TARGET,Math.max(0,BO_MONTHLY_TARGET-a.total),(a.total/BO_MONTHLY_TARGET*100).toFixed(1)])];const csv=data.map(row=>row.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\r\n");const url=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}));const a=document.createElement("a");a.href=url;a.download="PLI-RPLI-BO-Performance.csv";a.click();URL.revokeObjectURL(url)}
+async function loadData(){const btn=$("refreshBtn");btn.disabled=true;$("status").className="status";$("status").textContent="Loading Google Sheets data…";try{const response=await fetch(CSV_URL,{cache:"no-store"});if(!response.ok)throw new Error("HTTP "+response.status+" while loading CSV");const text=await response.text();if(!text.trim()||/<html|<!doctype/i.test(text.slice(0,200)))throw new Error("The link did not return CSV. Confirm the sheet is published as CSV.");const parsed=parseCSV(text);if(parsed.length<2)throw new Error("CSV is empty or has headers only.");headers=parsed[0].map((h,i)=>i===0?h.replace(/^\uFEFF/,"").trim():h.trim());sourceRows=parsed.slice(1).filter(r=>r.some(c=>String(c??"").trim()!=="")).map(r=>headers.map((_,i)=>r[i]??""));mapRows();fillFilters();applyFilters();const dates=normalizedRows.map(r=>r.date).filter(Boolean).sort((a,b)=>a-b);if(dates.length){const latest=dates[dates.length-1];$("tickerText").textContent=`Latest data date: ${dateLabel(latest)} · Data is updated only for the Previous Working Day`;}$("status").textContent=`Connected · ${sourceRows.length.toLocaleString("en-IN")} rows loaded · ${headers.length} columns detected`;const missing=[];if(findCol(aliases.date)<0)missing.push("date");if(findCol(aliases.pliAmt)<0)missing.push("PLI premium");if(findCol(aliases.rpliAmt)<0)missing.push("RPLI premium");if(findCol(aliases.bo)<0)missing.push("BO name");if(missing.length)$("status").textContent+=` · Check source headers for: ${missing.join(", ")}`;}catch(e){$("status").className="status error";$("status").textContent="Unable to load data: "+e.message;$("boTable").innerHTML=`<div class="empty">${safe(e.message)}<br><br>Confirm the published CSV link and check that its contents are accessible without sign-in.</div>`}finally{btn.disabled=false}}
+["subDivFilter","hoFilter","soFilter","boFilter"].forEach(id=>$(id).addEventListener("change",()=>{if(id==="subDivFilter"||id==="hoFilter"||id==="soFilter")updateDependentFilters();applyFilters()}));
+$("searchFilter").addEventListener("input",applyFilters);$("refreshBtn").addEventListener("click",loadData);$("resetBtn").addEventListener("click",()=>{["subDivFilter","hoFilter","soFilter","boFilter","searchFilter"].forEach(id=>$(id).value="");fillFilters();applyFilters()});$("downloadCsvBtn").addEventListener("click",downloadCSV);window.addEventListener("resize",()=>{if(normalizedRows.length)drawTrend()});
+loadData();
+// Refresh periodically while the dashboard is open.
+setInterval(loadData,5*60*1000);
+</script>
+</body>
+</html>
