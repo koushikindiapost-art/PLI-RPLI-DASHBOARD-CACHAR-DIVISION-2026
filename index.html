@@ -132,13 +132,13 @@ function dateParse(v){
   const s=String(v).trim();
   let m;
   // ISO dates: YYYY-MM-DD or YYYY/MM/DD
-  m=s.match(/^(\\d{4})[-/](\\d{1,2})[-/](\\d{1,2})(?:\\b|T|\\s)/);
+  m=s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:\b|T|\s)/);
   if(m){const d=new Date(+m[1],+m[2]-1,+m[3]);return d.getFullYear()===+m[1]&&d.getMonth()===+m[2]-1&&d.getDate()===+m[3]?d:null}
   // Indian date formats: DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY
-  m=s.match(/^(\\d{1,2})[./-](\\d{1,2})[./-](\\d{4})$/);
+  m=s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
   if(m){const day=+m[1],month=+m[2],year=+m[3];if(day>=1&&day<=31&&month>=1&&month<=12){const d=new Date(year,month-1,day);return d.getFullYear()===year&&d.getMonth()===month-1&&d.getDate()===day?d:null}return null}
   // Dates such as 29-Oct-2026
-  m=s.match(/^(\\d{1,2})[-/ ]([A-Za-z]{3,9})[-/ ](\\d{4})$/);
+  m=s.match(/^(\d{1,2})[-/ ]([A-Za-z]{3,9})[-/ ](\d{4})$/);
   if(m){const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};const mo=months[m[2].slice(0,3).toLowerCase()];if(mo!==undefined){const d=new Date(+m[3],mo,+m[1]);return d.getMonth()===mo&&d.getDate()===+m[1]?d:null}}
   // Fallback for other unambiguous browser-supported date strings
   const d=new Date(s);return Number.isNaN(d.getTime())?null:new Date(d.getFullYear(),d.getMonth(),d.getDate())
