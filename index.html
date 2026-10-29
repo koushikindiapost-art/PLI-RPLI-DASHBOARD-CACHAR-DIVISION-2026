@@ -59,7 +59,7 @@ select,input{background:#fff;border:1px solid var(--line);border-radius:8px;padd
 
   <section class="panel" id="dailyTrend">
     <div class="section-head"><h2>Current-month day-wise premium trend</h2><div class="panel-actions no-print"><button class="alt" onclick="printSection('dailyTrend')">PDF / Print this section</button></div></div>
-    <div class="chartbox"><canvas id="trendChart" width="1200" height="300" aria-label="Daily PLI and RPLI premium trend"></canvas></div>
+    <div class="chartbox"><canvas id="trendChart" width="1200" height="300" aria-label="Grouped bar chart of daily PLI and RPLI premium collections"></canvas></div>
     <div class="legend"><span><i class="dot" style="background:var(--pli)"></i>PLI</span><span><i class="dot" style="background:var(--rpli)"></i>RPLI</span></div>
     <p class="note">Every calendar day in the current month is shown, including days with zero recorded premium. The chart uses the date column found in the source sheet.</p>
   </section>
@@ -169,19 +169,21 @@ function drawTrend(){
   const w=canvas.width/dpr,h=280;ctx.clearRect(0,0,w,h);
   const now=new Date(),year=now.getFullYear(),month=now.getMonth(),today=now.getDate(),days=new Date(year,month+1,0).getDate();
   const values=Array.from({length:days},()=>({pli:0,rpli:0}));
-  filteredRows.forEach(r=>{if(r.date&&r.date.getFullYear()===year&&r.date.getMonth()===month){const i=r.date.getDate()-1;values[i].pli+=r.pli;values[i].rpli+=r.rpli}});
+  filteredRows.forEach(r=>{if(r.date&&r.date.getFullYear()===year&&r.date.getMonth()===month){const i=r.date.getDate()-1;values[i].pli+=Number(r.pli)||0;values[i].rpli+=Number(r.rpli)||0}});
   const plotted=values.slice(0,today),max=Math.max(1,...plotted.map(v=>Math.max(v.pli,v.rpli)));
-  const pad={l:58,r:15,t:20,b:35},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b,step=cw/days;
+  const pad={l:62,r:12,t:24,b:35},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b,step=cw/days;
   const xAt=i=>pad.l+i*step+step/2,yAt=v=>pad.t+ch-(v/max*ch);
   ctx.font="11px Arial";ctx.strokeStyle="#e3eaf3";ctx.fillStyle="#617187";ctx.lineWidth=1;
-  for(let i=0;i<=4;i++){const y=pad.t+ch*i/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();ctx.fillText(money(max*(1-i/4)),3,y+4)}
-  for(const key of ["pli","rpli"]){
-    ctx.beginPath();ctx.strokeStyle=key==="pli"?"#1769aa":"#16805d";ctx.lineWidth=2.5;
-    plotted.forEach((v,i)=>{const x=xAt(i),y=yAt(v[key]);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});ctx.stroke();
-    plotted.forEach((v,i)=>{const x=xAt(i),y=yAt(v[key]);ctx.beginPath();ctx.fillStyle=key==="pli"?"#1769aa":"#16805d";ctx.arc(x,y,2.8,0,Math.PI*2);ctx.fill()});
-  }
-  values.forEach((v,i)=>{if(i===0||i===days-1||(i+1)%5===0){const x=xAt(i);ctx.fillStyle=i>=today?"#9aa7b7":"#617187";ctx.fillText(String(i+1),x-4,h-10)}});
-  ctx.fillStyle="#617187";ctx.font="10px Arial";ctx.fillText("Daily premium (₹) · future dates are not plotted",pad.l,pad.t-7);
+  for(let i=0;i<=4;i++){const value=max*(1-i/4),y=pad.t+ch*i/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();ctx.fillText(money(value),3,y+4)}
+  const barW=Math.max(1,Math.min(10,step*0.34));
+  plotted.forEach((v,i)=>{
+    const center=xAt(i);
+    const pliH=Math.max(0,(v.pli/max)*ch),rpliH=Math.max(0,(v.rpli/max)*ch);
+    ctx.fillStyle="#1769aa";ctx.fillRect(center-barW-1,pad.t+ch-pliH,barW,pliH);
+    ctx.fillStyle="#16805d";ctx.fillRect(center+1,pad.t+ch-rpliH,barW,rpliH);
+  });
+  values.forEach((v,i)=>{if(i===0||i===days-1||(i+1)%5===0){const x=xAt(i);ctx.fillStyle=i>=today?"#9aa7b7":"#617187";ctx.textAlign="center";ctx.fillText(String(i+1),x,h-10)}});
+  ctx.textAlign="left";ctx.fillStyle="#617187";ctx.font="10px Arial";ctx.fillText("Daily premium (₹) · grouped bars compare PLI and RPLI",pad.l,pad.t-10);
 }
 function printSection(id){const node=$(id);if(!node)return;const w=window.open("","_blank");if(!w){window.print();return}const styles=[...document.querySelectorAll("style")].map(s=>s.innerHTML).join("\n");w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safe(node.querySelector("h2")?.textContent||"PLI RPLI Dashboard")}</title><style>${styles}body{background:#fff;padding:18px}.panel{border:0;box-shadow:none}.no-print,button{display:none!important}.table-wrap{max-height:none;overflow:visible}th{position:static}</style></head><body>${node.outerHTML}</body></html>`);w.document.close();w.focus();setTimeout(()=>{w.print();w.close()},400)}
 function downloadCSV(){const arr=aggregate(filteredRows.filter(r=>r.actualBO),"bo").filter(a=>a.name!=="Not specified").sort((a,b)=>b.total-a.total);const data=[["Rank","Branch Office","PLI Premium","RPLI Premium","Total Premium","PLI Count","RPLI Count","Target","Shortfall","Achievement %"],...arr.map((a,i)=>[i+1,a.name,a.pli,a.rpli,a.total,a.pliCount,a.rpliCount,BO_MONTHLY_TARGET,Math.max(0,BO_MONTHLY_TARGET-a.total),(a.total/BO_MONTHLY_TARGET*100).toFixed(1)])];const csv=data.map(row=>row.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\r\n");const url=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}));const a=document.createElement("a");a.href=url;a.download="PLI-RPLI-BO-Performance.csv";a.click();URL.revokeObjectURL(url)}
